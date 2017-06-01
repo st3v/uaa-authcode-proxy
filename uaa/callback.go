@@ -12,6 +12,7 @@ import (
 
 func Callback(oauth *oauth2.Config, session *session, httpClient *http.Client, redirectTo string) http.Handler {
 	return gctx.ClearHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// get state string from session
 		state, err := session.State(r)
 		if err != nil {
 			log.Printf("error reading session state: %v\n", err)
@@ -19,6 +20,7 @@ func Callback(oauth *oauth2.Config, session *session, httpClient *http.Client, r
 			return
 		}
 
+		// verify state string in request values
 		if r.FormValue("state") != state {
 			log.Printf("incorrect state, want: %q, have %q\n", state, r.FormValue("state"))
 			http.Error(w, "incorrect state", http.StatusForbidden)
@@ -30,6 +32,7 @@ func Callback(oauth *oauth2.Config, session *session, httpClient *http.Client, r
 			ctx = context.WithValue(ctx, oauth2.HTTPClient, httpClient)
 		}
 
+		// exchange auth code for token
 		token, err := oauth.Exchange(ctx, r.FormValue("code"))
 		if err != nil {
 			log.Printf("error exchanging token: %v\n", err)
@@ -37,6 +40,14 @@ func Callback(oauth *oauth2.Config, session *session, httpClient *http.Client, r
 			return
 		}
 
+		// check token scopes
+		if !hasRequiredScopes(token, oauth.Scopes) {
+			log.Println("insufficient scopes")
+			http.Error(w, "insufficient permissions", http.StatusUnauthorized)
+			return
+		}
+
+		// remember token in session
 		if err := session.SetToken(w, r, token); err != nil {
 			log.Printf("error storing token in session: %v\n", err)
 		}

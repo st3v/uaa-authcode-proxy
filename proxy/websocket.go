@@ -5,12 +5,13 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"strings"
+
+	"github.com/st3v/uaa-authcode-proxy/util"
 )
 
 func Websocket(target string, fallback http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !isWebsocketRequest(r) {
+		if !util.IsWebsocketRequest(r) {
 			fallback.ServeHTTP(w, r)
 			return
 		}
@@ -59,9 +60,4 @@ func Websocket(target string, fallback http.Handler) http.Handler {
 			log.Printf("error handling socket: %v\n", err)
 		}
 	})
-}
-
-func isWebsocketRequest(req *http.Request) bool {
-	return strings.ToLower(req.Header.Get("Connection")) == "upgrade" &&
-		strings.ToLower(req.Header.Get("Upgrade")) == "websocket"
 }

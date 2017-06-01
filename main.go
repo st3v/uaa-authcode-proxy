@@ -64,6 +64,7 @@ func main() {
 		log.Fatal(err)
 	}
 
+	// register UAA client for proxy
 	if uaaRegisterProxyClient {
 		log.Println("Registering UAA client for proxy...")
 
@@ -111,25 +112,30 @@ func main() {
 		},
 	}
 
+	// basic HTTP proxy
 	server := proxy.HTTP(backend)
 
+	// websocket proxy
 	if proxyWebsockets {
 		server = proxy.Websocket(backend.Host, server)
 	}
 
-	server = uaa.Authorize(uaaRequiredScopes, oauth, session, httpClient, server)
+	// oauth2 authorization handler
+	server = uaa.Authorize(oauth, session, httpClient, server)
 
+	// port redirection handler
 	if redirectToPort != "" {
 		server = redirect.Port(redirectToPort, server)
 	}
 
+	// scheme redirection handler
 	if redirectToScheme != "" {
 		server = redirect.Scheme(redirectToScheme, server)
 	}
 
 	mux := http.NewServeMux()
 	mux.Handle("/", server)
-	mux.Handle(uaaCallbackPath, uaa.Callback(oauth, session, httpClient, "/"))
+	mux.Handle(uaaCallbackPath, uaa.Callback(oauth, session, httpClient, "/")) // TODO: get rid of redirectURL, store in session
 
 	log.Printf("Listening on %s...", listenAddr)
 	log.Fatal(http.ListenAndServe(listenAddr, mux))
