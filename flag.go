@@ -103,17 +103,17 @@ func init() {
 	)
 
 	flag.StringVar(
-		&sessionHashKey,
-		"session.hash-key",
-		getEnvString("SESSION_HASH_KEY", ""),
-		"key to authenticate session cookies using HMAC, randomly generated if not specified [SESSION_HASH_KEY]",
+		&sessionAuthKey,
+		"session.auth-key",
+		getEnvString("SESSION_AUTH_KEY", ""),
+		"key to authenticate session cookies using HMAC, randomly generated if not specified [SESSION_AUTH_KEY]",
 	)
 
 	flag.StringVar(
-		&sessionBlockKey,
-		"session.block-key",
-		getEnvString("SESSION_BLOCK_KEY", ""),
-		"key to encrypt session cookies, randomly generated if not specified [SESSION_BLOCK_KEY]",
+		&sessionEncryptKey,
+		"session.encrypt-key",
+		getEnvString("SESSION_ENCRYPT_KEY", ""),
+		"key to encrypt session cookies, randomly generated if less than 16 bytes [SESSION_ENCRYPT_KEY]",
 	)
 
 	flag.StringVar(

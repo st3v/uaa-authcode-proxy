@@ -37,8 +37,8 @@ var (
 	uaaCACertPath          string
 	uaaSkipTLSVerify       bool
 	uaaTokenTTL            time.Duration
-	sessionHashKey         string
-	sessionBlockKey        string
+	sessionAuthKey         string
+	sessionEncryptKey      string
 )
 
 const uaaCallbackPath = "/auth/callback"
@@ -90,7 +90,7 @@ func main() {
 
 	oauth := uaa.Config(uaaURL, uaaProxyClientID, uaaProxyClientSecret, uaaRequiredScopes, callbackURL)
 
-	session := uaa.NewSessionStore([]byte(sessionHashKey), []byte(sessionBlockKey))
+	session := uaa.NewSessionStore([]byte(sessionAuthKey), []byte(sessionEncryptKey))
 
 	caCertPool := x509.NewCertPool()
 
