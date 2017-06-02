@@ -10,20 +10,20 @@ import (
 	"golang.org/x/oauth2"
 )
 
-func Callback(oauth *oauth2.Config, session *session, httpClient *http.Client, redirectTo string) http.Handler {
+func Callback(oauth *oauth2.Config, session Session, httpClient *http.Client, redirectTo string) http.Handler {
 	return gctx.ClearHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// get state string from session
-		state, err := session.State(r)
-		if err != nil {
-			log.Printf("error reading session state: %v\n", err)
-			http.Error(w, "missing state", http.StatusForbidden)
+		state, ok := session.Get(r, sessionKeyState).(string)
+		if !ok {
+			log.Println("missing or invalid state")
+			http.Error(w, "missing or invalid state", http.StatusForbidden)
 			return
 		}
 
 		// verify state string in request values
 		if r.FormValue("state") != state {
-			log.Printf("incorrect state, want: %q, have %q\n", state, r.FormValue("state"))
-			http.Error(w, "incorrect state", http.StatusForbidden)
+			log.Printf("state mismatch, want: %q, have %q\n", state, r.FormValue("state"))
+			http.Error(w, "state mismatch", http.StatusForbidden)
 			return
 		}
 
@@ -48,7 +48,9 @@ func Callback(oauth *oauth2.Config, session *session, httpClient *http.Client, r
 		}
 
 		// remember token in session
-		if err := session.SetToken(w, r, token); err != nil {
+		if err := session.Set(w, r, sessionKeyToken, token); err != nil {
+			// just log it for now and move on
+			// next request should trigger re-authentication
 			log.Printf("error storing token in session: %v\n", err)
 		}
 

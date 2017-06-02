@@ -2,8 +2,6 @@ package uaa
 
 import (
 	"encoding/gob"
-	"errors"
-	"fmt"
 	"net/http"
 	"os"
 
@@ -13,7 +11,11 @@ import (
 	"golang.org/x/oauth2"
 )
 
-const defaultSessionName = "uaa_proxy_new"
+const (
+	// keys used for session values
+	sessionKeyToken = "token"
+	sessionKeyState = "state"
+)
 
 type session struct {
 	name  string
@@ -24,7 +26,12 @@ func init() {
 	gob.Register(oauth2.Token{})
 }
 
-func NewSessionStore(hashKey, blockKey []byte) *session {
+type Session interface {
+	Get(r *http.Request, key string) interface{}
+	Set(w http.ResponseWriter, r *http.Request, key string, value interface{}) error
+}
+
+func NewSessionStore(name string, hashKey, blockKey []byte) *session {
 	if len(hashKey) == 0 {
 		hashKey = securecookie.GenerateRandomKey(64)
 	}
@@ -35,60 +42,21 @@ func NewSessionStore(hashKey, blockKey []byte) *session {
 	store.MaxLength(8096)
 
 	return &session{
-		name:  defaultSessionName,
+		name:  name,
 		store: store,
 	}
 }
 
-func (s *session) Token(r *http.Request) (*oauth2.Token, error) {
-	raw, err := s.get(r, "token")
-	if err != nil {
-		return nil, err
-	}
-
-	token, ok := raw.(oauth2.Token)
-	if !ok {
-		return nil, errors.New("invalid token found in session")
-	}
-
-	return &token, nil
-}
-
-func (s *session) State(r *http.Request) (string, error) {
-	raw, err := s.get(r, "state")
-	if err != nil {
-		return "", err
-	}
-
-	state, ok := raw.(string)
-	if !ok {
-		return "", errors.New("invalid state found in session")
-	}
-
-	return state, nil
-}
-
-func (s *session) SetToken(w http.ResponseWriter, r *http.Request, token *oauth2.Token) error {
-	return s.set(w, r, "token", *token)
-}
-
-func (s *session) SetState(w http.ResponseWriter, r *http.Request, state string) error {
-	return s.set(w, r, "state", state)
-}
-
-func (s *session) get(r *http.Request, key string) (interface{}, error) {
+// Get returns a session value for a given key. The function returns nil, if the
+// key is not present in the session.
+func (s *session) Get(r *http.Request, key string) interface{} {
 	// store.Get will always return a session, in the error case it will be empty
 	sess, _ := s.store.Get(r, s.name)
-
-	val, found := sess.Values[key]
-	if !found {
-		return nil, fmt.Errorf("key %q missing from session", key)
-	}
-
-	return val, nil
+	return sess.Values[key]
 }
 
-func (s *session) set(w http.ResponseWriter, r *http.Request, key string, value interface{}) error {
+// Set stores a value in the session using the provided key.
+func (s *session) Set(w http.ResponseWriter, r *http.Request, key string, value interface{}) error {
 	// store.Get will always return a session, in the error case it will be empty
 	sess, _ := s.store.Get(r, s.name)
 	sess.Values[key] = value

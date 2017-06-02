@@ -12,14 +12,16 @@ import (
 	"golang.org/x/oauth2"
 )
 
-func Authorize(oauth *oauth2.Config, session *session, httpClient *http.Client, handler http.Handler) http.Handler {
+func Authorize(oauth *oauth2.Config, session Session, httpClient *http.Client, handler http.Handler) http.Handler {
 	return gctx.ClearHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		token, err := session.Token(r)
-		if err != nil {
+		tval, ok := session.Get(r, sessionKeyToken).(oauth2.Token)
+		if !ok {
 			// no token, go and get one
+			log.Println("no or invalid token in session")
 			redirectToAuthCodeURL(w, r, oauth, session)
 			return
 		}
+		token := &tval
 
 		ctx := r.Context()
 		if httpClient != nil {
@@ -30,6 +32,7 @@ func Authorize(oauth *oauth2.Config, session *session, httpClient *http.Client, 
 		oldAccessToken := token.AccessToken
 
 		// make sure token is valid, refresh if necessary
+		var err error
 		token, err = oauth.TokenSource(ctx, token).Token()
 		if err != nil {
 			log.Printf("error getting token from token source: %v\n", err)
@@ -47,7 +50,11 @@ func Authorize(oauth *oauth2.Config, session *session, httpClient *http.Client, 
 			}
 
 			// store new token
-			session.SetToken(w, r, token)
+			if err := session.Set(w, r, sessionKeyToken, token); err != nil {
+				// just log it for now and move on
+				// next request should trigger re-authentication
+				log.Printf("error storing token in session: %v\n", err)
+			}
 		}
 
 		handler.ServeHTTP(w, r)
@@ -82,7 +89,7 @@ func hasRequiredScopes(token *oauth2.Token, scopes []string) bool {
 	return true
 }
 
-func redirectToAuthCodeURL(w http.ResponseWriter, r *http.Request, oauth *oauth2.Config, session *session) {
+func redirectToAuthCodeURL(w http.ResponseWriter, r *http.Request, oauth *oauth2.Config, session Session) {
 	// no need to redirect for websockets or xhr
 	if util.IsWebsocketRequest(r) || util.IsXMLHTTPRequest(r) {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
@@ -91,7 +98,12 @@ func redirectToAuthCodeURL(w http.ResponseWriter, r *http.Request, oauth *oauth2
 
 	// remember random state string in session
 	state := util.RandomString(64)
-	session.SetState(w, r, state)
+	if err := session.Set(w, r, sessionKeyState, state); err != nil {
+		// no need to redirect, callback handler will fail anyway
+		log.Printf("error storing state string in session: %v\n", err)
+		http.Error(w, "error storing session", http.StatusInternalServerError)
+		return
+	}
 
 	// redirect including including the state string
 	url := oauth.AuthCodeURL(state, oauth2.AccessTypeOnline)

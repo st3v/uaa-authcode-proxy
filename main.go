@@ -41,7 +41,10 @@ var (
 	sessionEncryptKey      string
 )
 
-const uaaCallbackPath = "/auth/callback"
+const (
+	defaultSessionName = "uaa_proxy_new"
+	uaaCallbackPath    = "/auth/callback"
+)
 
 func main() {
 	flag.Parse()
@@ -91,7 +94,7 @@ func main() {
 
 	oauth := uaa.Config(uaaURL, uaaProxyClientID, uaaProxyClientSecret, uaaRequiredScopes, callbackURL)
 
-	session := uaa.NewSessionStore([]byte(sessionAuthKey), []byte(sessionEncryptKey))
+	session := uaa.NewSessionStore(defaultSessionName, []byte(sessionAuthKey), []byte(sessionEncryptKey))
 
 	caCertPool := x509.NewCertPool()
 
