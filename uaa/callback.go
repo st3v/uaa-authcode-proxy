@@ -10,7 +10,7 @@ import (
 	"golang.org/x/oauth2"
 )
 
-func Callback(oauth *oauth2.Config, session Session, httpClient *http.Client, redirectTo string) http.Handler {
+func Callback(oauth *oauth2.Config, session Session, httpClient *http.Client) http.Handler {
 	return gctx.ClearHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// get state string from session
 		state, ok := session.Get(r, sessionKeyState).(string)
@@ -54,6 +54,14 @@ func Callback(oauth *oauth2.Config, session Session, httpClient *http.Client, re
 			log.Printf("error storing token in session: %v\n", err)
 		}
 
-		http.Redirect(w, r, redirectTo, http.StatusTemporaryRedirect)
+		// redirect to original request URL
+		redirectURL, ok := session.Get(r, sessionKeyRedirect).(string)
+		if !ok {
+			log.Println("missing or invalid redirect url")
+			http.Error(w, "missing redirect url", http.StatusForbidden)
+			return
+		}
+
+		http.Redirect(w, r, redirectURL, http.StatusTemporaryRedirect)
 	}))
 }

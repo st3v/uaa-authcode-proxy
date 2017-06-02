@@ -42,7 +42,7 @@ var (
 )
 
 const (
-	defaultSessionName = "uaa_proxy_new"
+	defaultSessionName = "uaaproxy"
 	uaaCallbackPath    = "/auth/callback"
 )
 
@@ -138,7 +138,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.Handle("/", server)
-	mux.Handle(uaaCallbackPath, uaa.Callback(oauth, session, httpClient, "/")) // TODO: get rid of redirectURL, store in session
+	mux.Handle(uaaCallbackPath, uaa.Callback(oauth, session, httpClient))
 
 	log.Printf("Listening on %s...", listenAddr)
 	log.Fatal(http.ListenAndServe(listenAddr, mux))

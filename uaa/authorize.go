@@ -105,6 +105,13 @@ func redirectToAuthCodeURL(w http.ResponseWriter, r *http.Request, oauth *oauth2
 		return
 	}
 
+	// remember request url to redirect to after token exchange
+	if err := session.Set(w, r, sessionKeyRedirect, r.URL.String()); err != nil {
+		log.Printf("error storing redirect url in session: %v\n", err)
+		http.Error(w, "error storing session", http.StatusInternalServerError)
+		return
+	}
+
 	// redirect including including the state string
 	url := oauth.AuthCodeURL(state, oauth2.AccessTypeOnline)
 	http.Redirect(w, r, url, http.StatusTemporaryRedirect)

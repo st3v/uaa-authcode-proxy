@@ -13,8 +13,9 @@ import (
 
 const (
 	// keys used for session values
-	sessionKeyToken = "token"
-	sessionKeyState = "state"
+	sessionKeyToken    = "token"
+	sessionKeyRedirect = "redirect"
+	sessionKeyState    = "state"
 )
 
 type session struct {
