@@ -6,7 +6,7 @@ import (
 	"net"
 	"net/http"
 
-	"github.com/st3v/uaa-authcode-proxy/util"
+	"github.com/st3v/uaa-proxy/util"
 )
 
 func Websocket(target string, fallback http.Handler) http.Handler {

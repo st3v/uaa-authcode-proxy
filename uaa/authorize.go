@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	gctx "github.com/gorilla/context"
-	"github.com/st3v/uaa-authcode-proxy/util"
+	"github.com/st3v/uaa-proxy/util"
 
 	"golang.org/x/oauth2"
 )

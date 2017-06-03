@@ -12,10 +12,10 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/st3v/uaa-authcode-proxy/proxy"
-	"github.com/st3v/uaa-authcode-proxy/redirect"
-	"github.com/st3v/uaa-authcode-proxy/uaa"
-	"github.com/st3v/uaa-authcode-proxy/uaa/register"
+	"github.com/st3v/uaa-proxy/proxy"
+	"github.com/st3v/uaa-proxy/redirect"
+	"github.com/st3v/uaa-proxy/uaa"
+	"github.com/st3v/uaa-proxy/uaa/register"
 )
 
 // flags
