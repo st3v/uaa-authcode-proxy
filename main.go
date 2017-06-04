@@ -4,10 +4,8 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"flag"
-	"fmt"
 	"io/ioutil"
 	"log"
-	"net"
 	"net/http"
 	"net/url"
 	"time"
@@ -20,31 +18,28 @@ import (
 
 // flags
 var (
-	listenAddr             string
-	backendAddr            string
-	hostname               string
-	redirectToPort         string
-	redirectToScheme       string
-	proxyWebsockets        bool
-	uaaURL                 string
-	uaaAdminClientID       string
-	uaaAdminClientSecret   string
-	uaaRegisterProxyClient bool
-	uaaProxyClientName     string
-	uaaProxyClientID       string
-	uaaProxyClientSecret   string
-	uaaRequiredScopes      stringSlice
-	uaaCACertPath          string
-	uaaSkipTLSVerify       bool
-	uaaTokenTTL            time.Duration
-	sessionAuthKey         string
-	sessionEncryptKey      string
+	listenAddr                string
+	backendAddr               string
+	redirectToPort            string
+	redirectToScheme          string
+	proxyWebsockets           bool
+	uaaURL                    string
+	uaaAdminClientID          string
+	uaaAdminClientSecret      string
+	uaaRegisterProxyClient    bool
+	uaaProxyClientName        string
+	uaaProxyClientID          string
+	uaaProxyClientSecret      string
+	uaaProxyClientRedirectURL string
+	uaaRequiredScopes         stringSlice
+	uaaCACertPath             string
+	uaaSkipTLSVerify          bool
+	uaaTokenTTL               time.Duration
+	sessionAuthKey            string
+	sessionEncryptKey         string
 )
 
-const (
-	defaultSessionName = "uaaproxy"
-	uaaCallbackPath    = "/auth/callback"
-)
+const defaultSessionName = "uaaproxy"
 
 func main() {
 	flag.Parse()
@@ -54,17 +49,17 @@ func main() {
 
 	if backendAddr == "" {
 		flag.Usage()
-		log.Fatalln("must specify target address")
+		log.Fatalln("Must specify target address")
 	}
 
 	backend, err := url.Parse(backendAddr)
 	if err != nil {
-		log.Fatalf("error parsing url %q: %v\n", backendAddr, err)
+		log.Fatalf("Error parsing URL %q: %v\n", backendAddr, err)
 	}
 
-	callbackURL, err := callbackURL(listenAddr, hostname, redirectToPort, redirectToScheme, uaaCallbackPath)
+	redirectURL, err := url.Parse(uaaProxyClientRedirectURL)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Error parsing UAA redirect URL %q: %v\n", uaaProxyClientRedirectURL, err)
 	}
 
 	// register UAA client for proxy
@@ -75,10 +70,10 @@ func main() {
 			uaaURL, uaaAdminClientID, uaaAdminClientSecret, uaaCACertPath, uaaSkipTLSVerify,
 		)
 		if err != nil {
-			log.Fatalf("error creating UAA client registrar: %v\n", err)
+			log.Fatalf("Error creating UAA client registrar: %v\n", err)
 		}
 
-		if err := registrar.RegisterClient(
+		err = registrar.RegisterClient(
 			uaaProxyClientID,
 			uaaProxyClientSecret,
 			register.WithName(uaaProxyClientName),
@@ -86,13 +81,17 @@ func main() {
 			register.WithScopes(uaaRequiredScopes...),
 			register.WithAuthorities("uaa.resource"),
 			register.WithTokenTTL(uaaTokenTTL),
-			register.WithRedirectURLs(callbackURL),
-		); err != nil {
-			log.Printf("error registering UAA client for proxy: %v\n", err)
+			register.WithRedirectURLs(redirectURL.String()),
+		)
+
+		if err != nil {
+			log.Printf("Error registering UAA client for proxy: %v\n", err)
+		} else {
+			log.Println("Done registering UAA client for proxy")
 		}
 	}
 
-	oauth := uaa.Config(uaaURL, uaaProxyClientID, uaaProxyClientSecret, uaaRequiredScopes, callbackURL)
+	oauth := uaa.Config(uaaURL, uaaProxyClientID, uaaProxyClientSecret, uaaRequiredScopes, redirectURL.String())
 
 	session := uaa.NewSessionStore(defaultSessionName, []byte(sessionAuthKey), []byte(sessionEncryptKey))
 
@@ -101,7 +100,7 @@ func main() {
 	if uaaCACertPath != "" {
 		cert, err := ioutil.ReadFile(uaaCACertPath)
 		if err != nil {
-			log.Fatalf("error reading UAA CA cert: %v\n", err)
+			log.Fatalf("Error reading UAA CA cert: %v\n", err)
 		}
 		caCertPool.AppendCertsFromPEM(cert)
 	}
@@ -138,29 +137,8 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.Handle("/", server)
-	mux.Handle(uaaCallbackPath, uaa.Callback(oauth, session, httpClient))
+	mux.Handle(redirectURL.Path, uaa.Callback(oauth, session, httpClient))
 
 	log.Printf("Listening on %s...", listenAddr)
 	log.Fatal(http.ListenAndServe(listenAddr, mux))
-}
-
-func callbackURL(listenAddr, hostname, port, scheme, path string) (string, error) {
-	listenHost, listenPort, err := net.SplitHostPort(listenAddr)
-	if err != nil {
-		return "", fmt.Errorf("invalid listen address: %v", err)
-	}
-
-	if hostname == "" {
-		hostname = listenHost
-	}
-
-	if port == "" {
-		port = listenPort
-	}
-
-	if scheme == "" {
-		scheme = "http"
-	}
-
-	return fmt.Sprintf("%s://%s:%s%s", scheme, hostname, port, path), nil
 }

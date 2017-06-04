@@ -26,13 +26,6 @@ func init() {
 		"backend address [BACKEND_ADDRESS]",
 	)
 
-	flag.StringVar(
-		&hostname,
-		"hostname",
-		getEnvString("HOSTNAME", "localhost"),
-		"hostname used for callbacks from UAA [HOSTNAME]",
-	)
-
 	flag.BoolVar(
 		&proxyWebsockets,
 		"proxy-websockets",
@@ -80,6 +73,13 @@ func init() {
 		"uaa.proxy-client.secret",
 		getEnvString("UAA_PROXY_CLIENT_SECRET", ""),
 		"UAA client secret used by the proxy [UAA_PROXY_CLIENT_SECRET]",
+	)
+
+	flag.StringVar(
+		&uaaProxyClientRedirectURL,
+		"uaa.proxy-client.redirect-url",
+		getEnvString("UAA_PROXY_CLIENT_REDIRECT_URL", "http://localhost:8080/auth/callback"),
+		"url to redirect user to after authentication, callback handler will be registered under the corresponding path [UAA_PROXY_CLIENT_REDIRECT_URL]",
 	)
 
 	flag.Var(
