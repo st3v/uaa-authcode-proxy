@@ -77,7 +77,7 @@ func main() {
 		log.Println("Registering UAA client for proxy...")
 
 		registrar, err := register.Registrar(
-			uaaURL, uaaAdminClientID, uaaAdminClientSecret, uaaCACertPath, uaaSkipTLSVerify,
+			uaaInternalURL, uaaAdminClientID, uaaAdminClientSecret, uaaCACertPath, uaaSkipTLSVerify,
 		)
 		if err != nil {
 			log.Fatalf("Error creating UAA client registrar: %v\n", err)
