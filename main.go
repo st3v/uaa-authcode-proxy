@@ -24,6 +24,7 @@ var (
 	redirectToScheme          string
 	proxyWebsockets           bool
 	uaaURL                    string
+	uaaInternalURL            string
 	uaaAdminClientID          string
 	uaaAdminClientSecret      string
 	uaaRegisterProxyClient    bool
@@ -60,6 +61,15 @@ func main() {
 	redirectURL, err := url.Parse(uaaProxyClientRedirectURL)
 	if err != nil {
 		log.Fatalf("Error parsing UAA redirect URL %q: %v\n", uaaProxyClientRedirectURL, err)
+	}
+
+	if uaaInternalURL == "" {
+		uaaInternalURL = uaaURL
+	}
+
+	oauthServerURL, err := url.Parse(uaaInternalURL)
+	if err != nil {
+		log.Fatalf("Error parsing UAA internal URL %q: %v\n", uaaInternalURL, err)
 	}
 
 	// register UAA client for proxy
@@ -105,12 +115,16 @@ func main() {
 		caCertPool.AppendCertsFromPEM(cert)
 	}
 
+	// custom http client for oauth
 	httpClient := &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				RootCAs:            caCertPool,
-				InsecureSkipVerify: uaaSkipTLSVerify,
+		Transport: &urlswitcher{
+			Transport: http.Transport{
+				TLSClientConfig: &tls.Config{
+					RootCAs:            caCertPool,
+					InsecureSkipVerify: uaaSkipTLSVerify,
+				},
 			},
+			url: oauthServerURL,
 		},
 	}
 
@@ -141,4 +155,16 @@ func main() {
 
 	log.Printf("Listening on %s...", listenAddr)
 	log.Fatal(http.ListenAndServe(listenAddr, mux))
+}
+
+type urlswitcher struct {
+	http.Transport
+	url *url.URL
+}
+
+func (u *urlswitcher) RoundTrip(r *http.Request) (*http.Response, error) {
+	r.Host = u.url.Host
+	r.URL.Scheme = u.url.Scheme
+	r.URL.Host = u.url.Host
+	return u.Transport.RoundTrip(r)
 }

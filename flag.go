@@ -55,6 +55,13 @@ func init() {
 	)
 
 	flag.StringVar(
+		&uaaInternalURL,
+		"uaa.internal-url",
+		getEnvString("UAA_INTERNAL_URL", ""),
+		"UAA internal url used for token exchange, if not specified the regular UAA URL is being used [UAA_INTERNAL_URL]",
+	)
+
+	flag.StringVar(
 		&uaaProxyClientName,
 		"uaa.proxy-client.name",
 		getEnvString("UAA_PROXY_CLIENT_NAME", ""),
