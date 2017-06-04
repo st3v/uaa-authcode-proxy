@@ -37,14 +37,14 @@ func init() {
 		&redirectToPort,
 		"redirect.port",
 		getEnvString("REDIRECT_PORT", ""),
-		"redirect to this port if a request does not already specifies it [REDIRECT_PORT]",
+		"if a request has X-Forwarded-Port header set, it must equal the port specified here, otherwise redirect to the required port [REDIRECT_PORT]",
 	)
 
 	flag.StringVar(
-		&redirectToScheme,
-		"redirect.scheme",
-		getEnvString("REDIRECT_SCHEME", ""),
-		"redirect to this scheme if a request does not already specifies it [REDIRECT_SCHEME]",
+		&redirectToProto,
+		"redirect.proto",
+		getEnvString("REDIRECT_PROTO", ""),
+		"if a request has X-Forwarded-Proto header set, it must equal the protocol specified here, otherwise redirect to the required protocol [REDIRECT_PROTO]",
 	)
 
 	flag.StringVar(

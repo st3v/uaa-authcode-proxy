@@ -21,7 +21,7 @@ var (
 	listenAddr                string
 	backendAddr               string
 	redirectToPort            string
-	redirectToScheme          string
+	redirectToProto           string
 	proxyWebsockets           bool
 	uaaURL                    string
 	uaaInternalURL            string
@@ -124,7 +124,7 @@ func main() {
 					InsecureSkipVerify: uaaSkipTLSVerify,
 				},
 			},
-			url: oauthServerURL,
+			target: oauthServerURL,
 		},
 	}
 
@@ -141,12 +141,12 @@ func main() {
 
 	// port redirection handler
 	if redirectToPort != "" {
-		server = redirect.Port(redirectToPort, server)
+		server = redirect.ForwardedPort(redirectToPort, server)
 	}
 
-	// scheme redirection handler
-	if redirectToScheme != "" {
-		server = redirect.Scheme(redirectToScheme, server)
+	// protocol redirection handler
+	if redirectToProto != "" {
+		server = redirect.ForwardedProto(redirectToProto, server)
 	}
 
 	mux := http.NewServeMux()
@@ -157,14 +157,17 @@ func main() {
 	log.Fatal(http.ListenAndServe(listenAddr, mux))
 }
 
+// urlswitcher is used to handle internal and external URLs for oauth2 server
 type urlswitcher struct {
 	http.Transport
-	url *url.URL
+	target *url.URL
 }
 
+// RoundTrip checks the URL of the original request and changes it to the
+// required target if necessary
 func (u *urlswitcher) RoundTrip(r *http.Request) (*http.Response, error) {
-	r.Host = u.url.Host
-	r.URL.Scheme = u.url.Scheme
-	r.URL.Host = u.url.Host
+	r.Host = u.target.Host
+	r.URL.Scheme = u.target.Scheme
+	r.URL.Host = u.target.Host
 	return u.Transport.RoundTrip(r)
 }
