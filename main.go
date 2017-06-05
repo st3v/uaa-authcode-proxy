@@ -12,6 +12,7 @@ import (
 
 	"github.com/st3v/uaa-proxy/proxy"
 	"github.com/st3v/uaa-proxy/redirect"
+	"github.com/st3v/uaa-proxy/sticky"
 	"github.com/st3v/uaa-proxy/uaa"
 	"github.com/st3v/uaa-proxy/uaa/register"
 )
@@ -138,6 +139,9 @@ func main() {
 
 	// oauth2 authorization handler
 	server = uaa.Authorize(oauth, session, httpClient, server)
+
+	// sticky sessions handler
+	server = sticky.Session(server)
 
 	// port redirection handler
 	if redirectToPort != "" {
